@@ -1,0 +1,72 @@
+<MessageTypePage>
+
+    GridLayout:
+        cols:1
+        size: root.width-root.width*0.1,root.height-root.height*0.1
+        pos: root.width*.05 , root.height*.05
+
+        Label:
+            text: " Select the Type of Midi Message : "
+            text_size: self.size
+            halign: 'center'
+            valign: 'middle'
+
+
+        GridLayout:
+            cols:2
+
+            Button:
+                text:"Control Change"
+                on_press : root.pressedCC()
+                text_size : self.size
+                halign: 'center'
+                valign: 'middle'
+
+            Button:
+                text:"Note On"
+                on_press : root.pressedNO()
+                text_size : self.size
+                halign: 'center'
+                valign: 'middle'
+
+
+<TakingInputsCC>
+
+    GridLayout:
+        cols:1
+        rows:3
+        size: root.width-root.width*0.1,root.height-root.height*0.1
+        pos: root.width*.05 , root.height*.05
+
+        GridLayout:
+            cols:2
+
+            Label:
+                text: "Column Names :"
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+
+            Label:
+                text: "%s"%(root.cn)
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+
+            Label:
+                text: "Enter the Control Change values in the following order\n ControlValue space ColumnNumber \nExample \n 27 3\n7 1"
+                text_size: self.size
+                halign: 'center'
+                valign: 'middle'
+
+            TextInput:
+                id : cc_inputs
+                multiline : True
+
+
+        Button:
+            text:"Next"
+            text_size : self.size
+            size_hint_y : root.height*0.0001
+            halign: 'center'
+            valign: 'middle'

@@ -1,8 +1,33 @@
+import kivy
+from kivy.app import App
+from kivy.uix.button import Button
+from kivy.uix.label import Label
+from kivy.uix.textinput import TextInput
+from kivy.uix.floatlayout import  FloatLayout
+from kivy.config import Config
+from kivy.uix.slider import Slider
+from kivy.uix.image import Image
+from kivy.uix.behaviors import ButtonBehavior
+from functools import wraps
+from kivy.clock import Clock
+from kivy.event import EventDispatcher
+from kivy.uix.widget import Widget
+from kivy.uix.button import Button
+from kivy.graphics import Color, Rectangle
+from kivy.uix.boxlayout import BoxLayout
+from kivy.graphics.texture import Texture
+from kivy.properties import StringProperty
 import mido
 import math
 import csv
 import time
 import ConfigurationSetup
+import io
+from kivy.core.image import Image as CoreImage
+
+
+
+Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
@@ -16,7 +41,7 @@ def normalize(min,max,val,rowNo):
 def sendCC(ccList,data,sleepTime,min,max,isInterpolation,factor):
 
     i=0
-    for options in cclist:
+    for options in ccList:
         control = options[0]
         value = int(64 if options[1] == "F" else data[int(options[1]) - 1])
         messageObject = mido.Message('control_change', control=int(control), value=int(normalize(min,max,value,int(options[1]) - 1)))
@@ -128,6 +153,7 @@ config=ConfigurationSetup.parse_cfg(cfgFile)
 
 #Parameters
 coloumnNames=[]
+coloumnNamesString=""
 data=[]
 port =mido.open_output(config["outPort"])
 options=""
@@ -149,64 +175,142 @@ with open(config["csvFileName"]) as csv_file:
         coloumnNames=row
         break
 
-    print ("Column Names:")
     for i in range(0,len(coloumnNames)):
-        print str(i+1)+") "+coloumnNames[i] +"  ",
-    print
+        coloumnNamesString+= str(i+1)+") "+coloumnNames[i] +"    "
+
+    print coloumnNamesString
+
+#     if (type=="cc"):
+#         cclist=[]
+#
+#         print "Enter the number of CC's you want to enter ?"
+#         n=int(raw_input())
+#         print "Give your input accordingly : control(cc value) value(column number)"
+#
+#
+#         for i in range(0,n):
+#             options = raw_input().split(" ")
+#             options[0]=int(options[0])
+#             options[1]=int(options[1])
+#             cclist.append(options)
+#
+#         options=cclist
+#
+#         for a in range(0,len(cclist)):
+#             previousValue.append(-1)
+#
+#     elif (type=="note_on"):
+#         print "Give your input accordingly(enter column numbers) : note velocity"
+#         options=raw_input().split(" ")
+#
+#         previousValue=[-1,-1]
+#
+#
+#     #Run Everthing
+#     print "Enter the no. of rows to do the operatios on(Mean):"
+#     print "Enter 1 if you want to parse it normally"
+#     noOfRows=int(input())
+#
+#     print "Do you want to do interpolation(Y/N) ?"
+#     inter=raw_input()
+#     if (inter=="Y"):
+#         isInterpolation=True
+#     else:
+#         isInterpolation=False
+#
+#     print "Enter the number of packets to be send inbetween two values"
+#     factor=int(input())
+#
+#     #define min and max
+#     preProcessedData=ConfigurationSetup.pickleloadData(config["preProcessedDataFN"])
+#
+#     for i in range(0,len(preProcessedData["min"])):
+#         preProcessedData["min"][i]=float(preProcessedData["min"][i])
+#         preProcessedData["max"][i]=float(preProcessedData["max"][i])
+#
+#
+#     sendMean(csv_reader,options,noOfRows,type,preProcessedData["min"],preProcessedData["max"],isInterpolation,factor)
+#
+#
+#     print ("CSV File Parsed Successfully")
+#
+#
 
 
-    if (type=="cc"):
-        cclist=[]
+'''<MessageTypePage>
 
-        print "Enter the number of CC's you want to enter ?"
-        n=int(raw_input())
-        print "Give your input accordingly : control(cc value) value(column number)"
+    messageType : MessageType
 
-
-        for i in range(0,n):
-            options = raw_input().split(" ")
-            options[0]=int(options[0])
-            options[1]=int(options[1])
-            cclist.append(options)
-
-        options=cclist
-
-        for a in range(0,len(cclist)):
-            previousValue.append(-1)
-
-    elif (type=="note_on"):
-        print "Give your input accordingly(enter column numbers) : note velocity"
-        options=raw_input().split(" ")
-
-        previousValue=[-1,-1]
+    GridLayout:
+        cols:1
+        size: root.width-root.width*0.1,root.height-root.height*0.1
+        pos: root.width*.05 , root.height*.05
 
 
-    #Run Everthing
-    print "Enter the no. of rows to do the operatios on(Mean):"
-    print "Enter 1 if you want to parse it normally"
-    noOfRows=int(input())
+        GridLayout:
+            cols:2
 
-    print "Do you want to do interpolation(Y/N) ?"
-    inter=raw_input()
-    if (inter=="Y"):
-        isInterpolation=True
-    else:
-        isInterpolation=False
+            Label:
+                text: "Type of Midi Packets ( cc / note_on )"
+                text_size: self.size
+                halign: 'right'
+                valign: 'middle'
 
-    print "Enter the number of packets to be send inbetween two values"
-    factor=int(input())
-
-    #define min and max
-    preProcessedData=ConfigurationSetup.pickleloadData(config["preProcessedDataFN"])
-
-    for i in range(0,len(preProcessedData["min"])):
-        preProcessedData["min"][i]=float(preProcessedData["min"][i])
-        preProcessedData["max"][i]=float(preProcessedData["max"][i])
+            TextInput:
+                id : MessageType
+                multiline : False
 
 
-    sendMean(csv_reader,options,noOfRows,type,preProcessedData["min"],preProcessedData["max"],isInterpolation,factor)
+        Button:
+            text:"Next"
+            on_press : root.pressed()
+'''
 
 
-    print ("CSV File Parsed Successfully")
+'''
+        Input Type     - Done
+
+        Column Names
+
+        If (CC) then 
+        (number of inputs
+        control and their values)
+
+        if (note_on) then
+        (Note and Velocity column numbers)
+
+        Delay between packets
+        No. of rows to do the operation on
+        Interpolation(Yes/No)
+        If yes then 
+        (Number of packets between 2 values
+        )
+        '''
 
 
+
+
+# UI
+
+class MessageTypePage(Widget):
+    global type
+
+    def pressedCC(self):
+        type="cc"
+
+    def pressedNO(self):
+        type="note_on"
+
+
+class TakingInputsCC(Widget):
+    global coloumnNamesString
+    cn= StringProperty(coloumnNamesString)
+
+
+
+class kivyApp(App):
+    def build(self):
+        return TakingInputsCC()
+
+if __name__=="__main__":
+    kivyApp().run()
