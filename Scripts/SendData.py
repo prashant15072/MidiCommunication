@@ -16,7 +16,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics.texture import Texture
-from kivy.properties import StringProperty
+from kivy.properties import StringProperty,ObjectProperty
 import mido
 import math
 import csv
@@ -292,25 +292,18 @@ with open(config["csvFileName"]) as csv_file:
 
 # UI
 
-class MessageTypePage(Widget):
-    global type
 
-    def pressedCC(self):
-        type="cc"
+class MainUI(Widget):
 
-    def pressedNO(self):
-        type="note_on"
+    def pressed(self):
+        pass
 
-
-class TakingInputsCC(Widget):
-    global coloumnNamesString
-    cn= StringProperty(coloumnNamesString)
-
-
+    def InterpolationSwitch(self,instance,value):
+        pass
 
 class kivyApp(App):
     def build(self):
-        return TakingInputsCC()
+        return MainUI()
 
 if __name__=="__main__":
     kivyApp().run()
