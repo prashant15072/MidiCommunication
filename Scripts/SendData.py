@@ -176,7 +176,7 @@ with open(config["csvFileName"]) as csv_file:
         break
 
     for i in range(0,len(coloumnNames)):
-        coloumnNamesString+= str(i+1)+") "+coloumnNames[i] +"    "
+        coloumnNamesString+= str(i+1)+")   "+coloumnNames[i] +"\n"
 
     print coloumnNamesString
 
@@ -295,11 +295,47 @@ with open(config["csvFileName"]) as csv_file:
 
 class MainUI(Widget):
 
-    def pressed(self):
-        pass
+    printColumnNames=ObjectProperty(None)
+    labelDelayBtwPackets=ObjectProperty(None)
+    labelAveragingRows=ObjectProperty(None)
+    labelInterpolation=ObjectProperty(None)
+    inputs=ObjectProperty(None)
+    labelTypeChange=ObjectProperty(None)
+    ccButton=ObjectProperty(None)
+    noteOnButton=ObjectProperty(None)
+
+    def __init__(self):
+        super(MainUI, self).__init__()
+
+    def printAllColumns(self):
+        self.printColumnNames.text = coloumnNamesString
+
+    def delayBtwPackets(self,*args):
+        self.labelDelayBtwPackets.text = str(int(args[1]))
+
+    def averagingRows(self,*args):
+        self.labelAveragingRows.text=str(int(args[1]))
+
+    def interpolation(self,*args):
+        self.labelInterpolation.text=str(int(args[1]))
 
     def InterpolationSwitch(self,instance,value):
+        print value
+
+    def noteOnFunction(self):
+        self.noteOnButton.disabled=True
+        self.ccButton.disabled=False
+        self.labelTypeChange.text= "Enter the Column Number for Note and the Column Number for Value in the following format : \n3 2\nWhere 3 is for Note and 2 is for Value"
         pass
+
+    def ccFunction(self):
+        self.noteOnButton.disabled=False
+        self.ccButton.disabled=True
+        self.labelTypeChange.text = "Enter the Control Number and the Column Number in the following format : \n33 2\n76 9"
+        pass
+
+    def start(self):
+        print self.inputs.text
 
 class kivyApp(App):
     def build(self):

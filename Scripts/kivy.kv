@@ -2,6 +2,15 @@
 
 <MainUI>
 
+    printColumnNames:columnNames
+    labelDelayBtwPackets:labelDelayBtwPackets
+    labelAveragingRows:labelAveragingRows
+    labelInterpolation:labelInterpolation
+    inputs:inputs
+    labelTypeChange:labelTypeChange
+    ccButton:ccButton
+    noteOnButton:noteOnButton
+
     ## Top Layout for taking inputs
     GridLayout:
         cols:3
@@ -34,6 +43,9 @@
         Label:
             text:""
 
+        Button:
+            text:"Print Column Names"
+            on_press : root.printAllColumns()
 
 
     ## Second Layout to take it the rest of the stuff
@@ -50,32 +62,42 @@
             ScrollView:
                 BoxLayout:
                     size_hint_y:None
-                    height:Window.height*0.7
+                    height:Window.height*0.8
                     orientation:'vertical'
 
                     Label:
-                        text:"Prashant \n"*20
+                        id:columnNames
+                        text:"Scroll\nDown\nTo\nSee\neverything\n"*5
 
             FloatLayout:
 
                 Button:
+                    id:ccButton
                     text:"CC Messages"
                     size_hint : 0.5,0.3
                     pos_hint : {"x":0,"y":.7}
+                    disabled:True
+                    on_press : root.ccFunction()
 
                 Button:
+                    id:noteOnButton
                     text:"NoteOn Messages"
                     size_hint : 0.5,0.3
                     pos_hint : {"x":0.5,"y":.7}
+                    disabled:False
+                    on_press : root.noteOnFunction()
+
 
                 Label:
-                    text:"Enter the Control Number and the Column Name in the following format : \n33 ColumnA\n76 ColumnB"
+                    id:labelTypeChange
+                    text:"Enter the Control Number and the Column Number in the following format : \n33 2\n76 9"
                     text_size : self.size
                     size_hint : 1,.5
                     pos_hint : {"x":0,"y":.2}
 
 
             TextInput:
+                id:inputs
                 multiline:True
 
         ## Rest of the Properties Here
@@ -90,9 +112,10 @@
                 max:30
                 pos_hint : {"x":0.1,"y":0.85}
                 size_hint : .8,.1
-                ## on_value:root.new_thickness(*args)
+                on_value:root.delayBtwPackets(*args)
 
             Label:
+                id:labelDelayBtwPackets
                 text:"1"
                 size_hint : 1,.1
                 pos_hint : {"x":0,"y":0.8}
@@ -105,12 +128,13 @@
 
             Slider:
                 min:1
-                max:30
+                max:500
                 pos_hint : {"x":0.1,"y":0.65}
                 size_hint : .8,.1
-                ## on_value:root.new_thickness(*args)
+                on_value:root.averagingRows(*args)
 
             Label:
+                id:labelAveragingRows
                 text:"1"
                 size_hint : 1,.1
                 pos_hint : {"x":0,"y":0.6}
@@ -130,9 +154,10 @@
                 max:1000
                 pos_hint : {"x":0.1,"y":.33}
                 size_hint : .8,.1
-                ## on_value:root.new_thickness(*args)
+                on_value:root.interpolation(*args)
 
             Label:
+                id:labelInterpolation
                 text:"1"
                 size_hint : 1,.1
                 pos_hint : {"x":0,"y":0.28}
@@ -141,8 +166,10 @@
                 text:"Start"
                 size_hint : 0.4,0.15
                 pos_hint : {"x":0.1,"y":0.03}
+                on_press : root.start()
 
             Button:
                 text:"Stop"
                 size_hint : 0.4,0.15
                 pos_hint : {"x":0.55,"y":0.03}
+                on_press : root.stop()
