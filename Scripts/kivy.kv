@@ -1,3 +1,5 @@
+#: import Window kivy.core.window.Window
+
 <MainUI>
 
     ## Top Layout for taking inputs
@@ -33,6 +35,7 @@
             text:""
 
 
+
     ## Second Layout to take it the rest of the stuff
 
     GridLayout:
@@ -41,30 +44,39 @@
         pos: 0 , root.height*.05
 
         ## Selecting CC or Note On Messages
-        FloatLayout:
+        GridLayout:
+            cols:1
 
-            Button:
-                text:"CC Messages"
-                size_hint : 0.5,0.1
-                pos_hint : {"x":0,"y":.9}
+            ScrollView:
+                BoxLayout:
+                    size_hint_y:None
+                    height:Window.height*0.7
+                    orientation:'vertical'
 
-            Button:
-                text:"NoteOn Messages"
-                size_hint : 0.5,0.1
-                pos_hint : {"x":0.5,"y":.9}
+                    Label:
+                        text:"Prashant \n"*20
 
             FloatLayout:
+
+                Button:
+                    text:"CC Messages"
+                    size_hint : 0.5,0.3
+                    pos_hint : {"x":0,"y":.7}
+
+                Button:
+                    text:"NoteOn Messages"
+                    size_hint : 0.5,0.3
+                    pos_hint : {"x":0.5,"y":.7}
 
                 Label:
                     text:"Enter the Control Number and the Column Name in the following format : \n33 ColumnA\n76 ColumnB"
                     text_size : self.size
-                    size_hint : 1,.3
-                    pos_hint : {"x":0,"y":.8}
+                    size_hint : 1,.5
+                    pos_hint : {"x":0,"y":.2}
 
-                TextInput:
-                    multiline:True
-                    size_hint : 1,.7
-                    pos_hint : {"x":0,"y":0.1}
+
+            TextInput:
+                multiline:True
 
         ## Rest of the Properties Here
         FloatLayout:
