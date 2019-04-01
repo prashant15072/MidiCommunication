@@ -24,7 +24,7 @@ import time
 import ConfigurationSetup
 import io
 from kivy.core.image import Image as CoreImage
-
+from kivy.clock import Clock
 
 
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
@@ -47,7 +47,8 @@ isInterpolation=False
 factor=1
 
 
-
+def my_callback(dt):
+    pass
 
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
@@ -80,7 +81,7 @@ def sendCC(ccList,data,min,max):
                     temp=messageObject.copy(control=int(control), value=int(normalize(min,max,a,int(options[1]) - 1)))
                     port.send(temp)
                     # Make it sleep here
-                    time.sleep(changedSleepTime)
+                    Clock.schedule_once(my_callback, changedSleepTime)
         previousValue[i]=value
         i+=1
 
@@ -112,7 +113,7 @@ def sendNoteOn(options,data,min,max):
                 temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
                 port.send(temp)
                 # Make it sleep here
-                time.sleep(changedSleepTime)
+                Clock.schedule_once(my_callback, changedSleepTime)
     previousValue[0] = note
     previousValue[1] = velocity
 
