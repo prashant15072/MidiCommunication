@@ -29,6 +29,26 @@ from kivy.core.image import Image as CoreImage
 
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
 
+#configuration Setup
+cfgFile="config.cfg"
+config=ConfigurationSetup.parse_cfg(cfgFile)
+
+#Parameters
+coloumnNames=[]
+coloumnNamesString=""
+data=[]
+port = ""
+options=""
+sleepTime=1                            #In seconds
+type="cc"
+noOfRows=1
+previousValue=[]
+isInterpolation=False
+factor=1
+
+
+
+
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
         return val
@@ -38,7 +58,7 @@ def normalize(min,max,val,rowNo):
     return math.ceil(ans*127)
 
 
-def sendCC(ccList,data,sleepTime,min,max,isInterpolation,factor):
+def sendCC(ccList,data,min,max):
 
     i=0
     for options in ccList:
@@ -66,7 +86,7 @@ def sendCC(ccList,data,sleepTime,min,max,isInterpolation,factor):
 
 
 
-def sendNoteOn(options,data,sleepTime,min,max,isInterpolation,factor):
+def sendNoteOn(options,data,min,max):
 
     messageObject = mido.Message('note_on')
     note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
@@ -97,195 +117,67 @@ def sendNoteOn(options,data,sleepTime,min,max,isInterpolation,factor):
     previousValue[1] = velocity
 
 
-def sendNormally(csv_reader,options,type,min,max,isInterpolation,factor):
-    line_count = -1
+def sendNormally(row,options,min,max):
 
-    for row in csv_reader:
-
-        line_count += 1
-        if line_count > 0:
-
-            if (type == "cc"):
-                sendCC(options,row,sleepTime,min,max,isInterpolation,factor)
-            else:
-                sendNoteOn(options,row,sleepTime,min,max,isInterpolation,factor)
+    if (type == "cc"):
+        sendCC(options,row,min,max)
+    else:
+        sendNoteOn(options,row,min,max)
 
 
 
-def sendMean(csv_reader,options,noOfRows,type,min,max,isInterpolation,factor):
+def sendMean(options,min,max):
+    global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, isInterpolation
+
     line_count = 0
-    if (noOfRows<=1):
-        sendNormally(csv_reader,options,type,min,max,isInterpolation,factor)
-        return
+    data=[]
+    try:
+        # Reading CSV
+        file = open(config["csvFileName"])
 
-    for row in csv_reader:
+    except:
+        # TODO
+        # Make a pop Up of invalid file name
+        pass
 
-        line_count += 1
-        #Make sure that the modulo is greater that 1
-        if line_count > 0:
 
-            if (line_count%noOfRows==0):
+    with file as csv_file:
+        csv_reader = csv.reader(csv_file, delimiter=config["csvDelimiter"])
 
-                for i in range(0,len(row)):
-                    data[i]=int(data[i])+int(row[i])
+        for row in csv_reader:
+            break
 
-                #averaging
-                for i in range(0,len(data)):
-                    data[i]=float(data[i])/noOfRows
+        for row in csv_reader:
 
-                if (type == "cc"):
-                    sendCC(options,data,sleepTime,min,max,isInterpolation,factor)
+            if (noOfRows <= 1):
+                sendNormally(row, options, min, max)
+                continue
+
+            line_count += 1
+            #Make sure that the modulo is greater that 1
+            if line_count > 0:
+
+                if (line_count%noOfRows==0):
+
+                    for i in range(0,len(row)):
+                        data[i]=int(data[i])+int(row[i])
+
+                    #averaging
+                    for i in range(0,len(data)):
+                        data[i]=float(data[i])/noOfRows
+
+                    if (type == "cc"):
+                        sendCC(options,data,min,max)
+                    else:
+                        sendNoteOn(options,data,min,max)
+
+                elif (line_count%noOfRows==1):
+                    data=row
+
                 else:
-                    sendNoteOn(options,data,sleepTime,min,max,isInterpolation,factor)
+                    for i in range(0,len(row)):
+                        data[i]=int(data[i])+int(row[i])
 
-            elif (line_count%noOfRows==1):
-                data=row
-
-            else:
-                for i in range(0,len(row)):
-                    data[i]=int(data[i])+int(row[i])
-
-
-
-#configuration Setup
-cfgFile="config.cfg"
-config=ConfigurationSetup.parse_cfg(cfgFile)
-
-#Parameters
-coloumnNames=[]
-coloumnNamesString=""
-data=[]
-port =mido.open_output(config["outPort"])
-options=""
-sleepTime=1                            #In seconds
-type="cc"
-noOfRows=1
-previousValue=[]
-isInterpolation=False
-
-#Inputs
-type=raw_input("Enter the type of Midi Packets(cc/note_on)?")
-sleepTime=int(raw_input("Enter the delay between each packets(in seconds)"))
-
-#Reading CSV
-with open(config["csvFileName"]) as csv_file:
-    csv_reader = csv.reader(csv_file, delimiter=config["csvDelimiter"])
-
-    for row in csv_reader:
-        coloumnNames=row
-        break
-
-    for i in range(0,len(coloumnNames)):
-        coloumnNamesString+= str(i+1)+")   "+coloumnNames[i] +"\n"
-
-    print coloumnNamesString
-
-#     if (type=="cc"):
-#         cclist=[]
-#
-#         print "Enter the number of CC's you want to enter ?"
-#         n=int(raw_input())
-#         print "Give your input accordingly : control(cc value) value(column number)"
-#
-#
-#         for i in range(0,n):
-#             options = raw_input().split(" ")
-#             options[0]=int(options[0])
-#             options[1]=int(options[1])
-#             cclist.append(options)
-#
-#         options=cclist
-#
-#         for a in range(0,len(cclist)):
-#             previousValue.append(-1)
-#
-#     elif (type=="note_on"):
-#         print "Give your input accordingly(enter column numbers) : note velocity"
-#         options=raw_input().split(" ")
-#
-#         previousValue=[-1,-1]
-#
-#
-#     #Run Everthing
-#     print "Enter the no. of rows to do the operatios on(Mean):"
-#     print "Enter 1 if you want to parse it normally"
-#     noOfRows=int(input())
-#
-#     print "Do you want to do interpolation(Y/N) ?"
-#     inter=raw_input()
-#     if (inter=="Y"):
-#         isInterpolation=True
-#     else:
-#         isInterpolation=False
-#
-#     print "Enter the number of packets to be send inbetween two values"
-#     factor=int(input())
-#
-#     #define min and max
-#     preProcessedData=ConfigurationSetup.pickleloadData(config["preProcessedDataFN"])
-#
-#     for i in range(0,len(preProcessedData["min"])):
-#         preProcessedData["min"][i]=float(preProcessedData["min"][i])
-#         preProcessedData["max"][i]=float(preProcessedData["max"][i])
-#
-#
-#     sendMean(csv_reader,options,noOfRows,type,preProcessedData["min"],preProcessedData["max"],isInterpolation,factor)
-#
-#
-#     print ("CSV File Parsed Successfully")
-#
-#
-
-
-'''<MessageTypePage>
-
-    messageType : MessageType
-
-    GridLayout:
-        cols:1
-        size: root.width-root.width*0.1,root.height-root.height*0.1
-        pos: root.width*.05 , root.height*.05
-
-
-        GridLayout:
-            cols:2
-
-            Label:
-                text: "Type of Midi Packets ( cc / note_on )"
-                text_size: self.size
-                halign: 'right'
-                valign: 'middle'
-
-            TextInput:
-                id : MessageType
-                multiline : False
-
-
-        Button:
-            text:"Next"
-            on_press : root.pressed()
-'''
-
-
-'''
-        Input Type     - Done
-
-        Column Names
-
-        If (CC) then 
-        (number of inputs
-        control and their values)
-
-        if (note_on) then
-        (Note and Velocity column numbers)
-
-        Delay between packets
-        No. of rows to do the operation on
-        Interpolation(Yes/No)
-        If yes then 
-        (Number of packets between 2 values
-        )
-        '''
 
 
 
@@ -303,39 +195,115 @@ class MainUI(Widget):
     labelTypeChange=ObjectProperty(None)
     ccButton=ObjectProperty(None)
     noteOnButton=ObjectProperty(None)
+    portname=ObjectProperty(None)
+    csv_filepath=ObjectProperty(None)
 
     def __init__(self):
         super(MainUI, self).__init__()
 
     def printAllColumns(self):
+        config["csvFileName"]=self.csv_filepath.text
+
+        global coloumnNamesString
+
+        try:
+            # Reading CSV
+            file=open(config["csvFileName"])
+            with file as csv_file:
+                csv_reader = csv.reader(csv_file, delimiter=config["csvDelimiter"])
+
+                for row in csv_reader:
+                    coloumnNames = row
+                    break
+
+                for i in range(0, len(coloumnNames)):
+                    coloumnNamesString += str(i + 1) + ")   " + coloumnNames[i] + "\n"
+            file.close()
+
+        except :
+            #TODO
+            # Make a pop Up of invalid file name
+            pass
+
         self.printColumnNames.text = coloumnNamesString
 
     def delayBtwPackets(self,*args):
         self.labelDelayBtwPackets.text = str(int(args[1]))
 
     def averagingRows(self,*args):
+        global noOfRows
+        noOfRows=int(args[1])
         self.labelAveragingRows.text=str(int(args[1]))
 
     def interpolation(self,*args):
+        global factor
+        factor=int(args[1])
         self.labelInterpolation.text=str(int(args[1]))
 
     def InterpolationSwitch(self,instance,value):
-        print value
+        global isInterpolation
+        isInterpolation=value
 
     def noteOnFunction(self):
+        global type
+        type="note_on"
         self.noteOnButton.disabled=True
         self.ccButton.disabled=False
         self.labelTypeChange.text= "Enter the Column Number for Note and the Column Number for Value in the following format : \n3 2\nWhere 3 is for Note and 2 is for Value"
         pass
 
     def ccFunction(self):
+        global type
+        type = "cc"
         self.noteOnButton.disabled=False
         self.ccButton.disabled=True
         self.labelTypeChange.text = "Enter the Control Number and the Column Number in the following format : \n33 2\n76 9"
         pass
 
     def start(self):
-        print self.inputs.text
+
+        global coloumnNames,coloumnNamesString,data,port,options,sleepTime,type,noOfRows,previousValue,isInterpolation
+
+        config["outPort"]=self.portname.text+" 1"
+
+        port=mido.open_output(config["outPort"])
+
+        if (type == "cc"):
+            cclist = []
+            lists=self.inputs.text
+            lists=lists.split["\n"]
+
+            for i in range(0, len(lists)):
+                options = lists[i].split(" ")
+                options[0] = int(options[0].strip())
+                options[1] = int(options[1].strip())
+                cclist.append(options)
+
+            options = cclist
+
+            for a in range(0, len(cclist)):
+                previousValue.append(-1)
+
+        elif (type == "note_on"):
+
+            options = self.inputs.text.strip().split(" ")
+            previousValue = [-1, -1]
+
+        # Run Everthing
+
+
+        # define min and max
+        preProcessedData = ConfigurationSetup.pickleloadData(config["preProcessedDataFN"])
+
+        for i in range(0, len(preProcessedData["min"])):
+            preProcessedData["min"][i] = float(preProcessedData["min"][i])
+            preProcessedData["max"][i] = float(preProcessedData["max"][i])
+
+
+        sendMean(options, preProcessedData["min"], preProcessedData["max"])
+
+        print ("CSV File Parsed Successfully")
+
 
 class kivyApp(App):
     def build(self):
