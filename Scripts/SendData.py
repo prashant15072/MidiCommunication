@@ -25,6 +25,7 @@ import ConfigurationSetup
 import io
 from kivy.core.image import Image as CoreImage
 from kivy.clock import Clock
+from functools import partial
 
 
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
@@ -46,10 +47,6 @@ previousValue=[]
 isInterpolation=False
 factor=1
 
-
-def my_callback(dt):
-    pass
-
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
         return val
@@ -58,7 +55,30 @@ def normalize(min,max,val,rowNo):
 
     return math.ceil(ans*127)
 
+def yield_to_sleep(func):
+    @wraps(func)  # takes a function used in a decorator and adds the functionality of copying over the function name, arguments list, etc.
+    def wrapper(options,data,max,min,*args, **kwargs):
+        gen = func(options,data,max,min)
 
+        def next_step(*_):  # defining a custom iterator function
+            try:
+                t = next(gen)  # this executes the part of 'func' (in this case, read_image) before the yield statement and returns control to you
+            # i.e in this case it returns run_dict["v"] and stores it in t
+            except StopIteration:
+                pass
+            else:
+                # start = time.time()
+                Clock.schedule_once(next_step, t)  # having control you can resume func execution after some time
+            # print("Process time: " + str(time.time() - start))
+            # this executes the part of func after the yield
+
+        next_step()
+
+    return wrapper
+
+
+# generator function
+@yield_to_sleep  # use this decorator to cast 'yield' to non-blocking sleep
 def sendCC(ccList,data,min,max):
 
     i=0
@@ -81,12 +101,15 @@ def sendCC(ccList,data,min,max):
                     temp=messageObject.copy(control=int(control), value=int(normalize(min,max,a,int(options[1]) - 1)))
                     port.send(temp)
                     # Make it sleep here
-                    Clock.schedule_once(my_callback, changedSleepTime)
+                    # Clock.schedule_once(my_callback, changedSleepTime)
+                    yield changedSleepTime
         previousValue[i]=value
         i+=1
 
 
 
+# generator function
+@yield_to_sleep  # use this decorator to cast 'yield' to non-blocking sleep
 def sendNoteOn(options,data,min,max):
 
     messageObject = mido.Message('note_on')
@@ -94,8 +117,8 @@ def sendNoteOn(options,data,min,max):
     velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
     note=int(normalize(min,max,note,int(options[0]) - 1))
     velocity=int(normalize(min,max,velocity,int(options[1]) - 1))
-    messageObject = messageObject.copy(note=note, velocity=velocity)
-    port.send(messageObject)
+    print sleepTime
+    print factor
     changedSleepTime = float(sleepTime) / factor
 
     if (isInterpolation == True):
@@ -109,11 +132,22 @@ def sendNoteOn(options,data,min,max):
             dvelocity=(float(previousValue[1]-velocity))/factor
             for j in range(0, factor):
                 anote = anote + dnote
-                avelocity=avelocity+dvelocity
+                avelocity = avelocity + dvelocity
                 temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
-                port.send(temp)
                 # Make it sleep here
-                Clock.schedule_once(my_callback, changedSleepTime)
+                # Clock.schedule_once(my_callback, changedSleepTime)
+                yield changedSleepTime
+
+                port.send(temp)
+
+    # Make it sleep here
+    # Clock.schedule_once(my_callback, changedSleepTime)
+    yield changedSleepTime
+
+    messageObject = messageObject.copy(note=note, velocity=velocity)
+    port.send(messageObject)
+
+
     previousValue[0] = note
     previousValue[1] = velocity
 
@@ -124,6 +158,7 @@ def sendNormally(row,options,min,max):
         sendCC(options,row,min,max)
     else:
         sendNoteOn(options,row,min,max)
+
 
 
 
@@ -229,6 +264,8 @@ class MainUI(Widget):
         self.printColumnNames.text = coloumnNamesString
 
     def delayBtwPackets(self,*args):
+        global sleepTime
+        sleepTime=int(args[1])
         self.labelDelayBtwPackets.text = str(int(args[1]))
 
     def averagingRows(self,*args):
