@@ -47,6 +47,7 @@ sleepTime=1                            #In seconds
 type="cc"
 noOfRows=1
 previousValue=[]
+pValue=[[-1,-1]]
 isInterpolation=False
 factor=1
 
@@ -79,39 +80,15 @@ def yieldsleep(create_gen):
     return func
 
 
-def Interpolation(note,velocity,messageObject):
-    if (previousValue[0] >= 0):
-        temp = messageObject.copy(note=int(note), velocity=int(velocity))
-        port.send(temp)
-
-# generator function
-# use this decorator to cast 'yield' to non-blocking sleep
 def sendCC(ccList,data,min,max):
 
     i=0
+    messageObject = mido.Message('control_change')
     for options in ccList:
         control = options[0]
         value = int(64 if options[1] == "F" else data[int(options[1]) - 1])
-        messageObject = mido.Message('control_change', control=int(control), value=int(normalize(min,max,value,int(options[1]) - 1)))
-        port.send(messageObject)
-        # time.sleep(sleepTime)  #Have to change this
-        changedSleepTime=float(sleepTime)/factor
-
-        if (isInterpolation==True):
-
-            #Liner Interpolation
-            a=value
-            if (previousValue[0]>=0):
-                d = float(previousValue[i] - value) / factor
-                for j in range(0,factor):
-                    a=a+d
-                    temp=messageObject.copy(control=int(control), value=int(normalize(min,max,a,int(options[1]) - 1)))
-                    port.send(temp)
-                    # Make it sleep here
-                    # Clock.schedule_once(my_callback, changedSleepTime)
-                    yield changedSleepTime
-        previousValue[i]=value
-        i+=1
+        temp =messageObject.copy(control=int(control), value=int(normalize(min,max,value,int(options[1]) - 1)))
+        port.send(temp)
 
 
 def sendNoteOn(options,data,min,max):
@@ -129,7 +106,7 @@ def sendNoteOn(options,data,min,max):
 
 @yieldsleep
 def sendMean(options,min,max):
-    global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, isInterpolation
+    global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, pValue,isInterpolation
 
     line_count = 0
     data=[]
@@ -155,7 +132,46 @@ def sendMean(options,min,max):
 
 
                 if (type == "cc"):
+
+                    ccList=options
+                    data=row
+
+                    if (isInterpolation==True):
+                        tempD=[]
+                        tempValue=list(ccList)
+                        changedSleepTime = float(sleepTime) / factor
+                        messageObject = mido.Message('control_change')
+
+                        j=0
+
+                        for op in ccList:
+                            control = op[0]
+                            value = int(64 if op[1] == "F" else data[int(op[1]) - 1])
+                            tempValue[j]=[control,value]
+                            if (pValue[0][0]>=0):
+                                d = float(value-pValue[j][1]) / factor
+                                tempD.append(d)
+                            j+=1
+
+
+                        if (pValue[0][0]>=0):
+                            for z in range(1,factor):
+                                yield changedSleepTime
+                                for k in range(0,len(ccList)):
+                                    newValue=pValue[k][1]+tempD[k]
+                                    pValue[k][1]=newValue
+                                    temp = messageObject.copy(control=int(pValue[k][0]),
+                                                              value=int(normalize(min, max, pValue[k][1], int(ccList[k][1]) - 1)))
+                                    port.send(temp)
+
+                        pValue=list(tempValue)
+                    else:
+                        yield sleepTime
+
+
                     sendCC(options, row, min, max)
+
+
                 else:
                     if (isInterpolation == True):
                         data=row
@@ -208,6 +224,42 @@ def sendMean(options,min,max):
 
 
                     if (type == "cc"):
+
+                        ccList = options
+                        data = row
+
+                        if (isInterpolation == True):
+                            tempD = []
+                            tempValue = list(ccList)
+                            changedSleepTime = float(sleepTime) / factor
+                            messageObject = mido.Message('control_change')
+
+                            j = 0
+
+                            for op in ccList:
+                                control = op[0]
+                                value = int(64 if op[1] == "F" else data[int(op[1]) - 1])
+                                tempValue[j] = [control, value]
+                                if (pValue[0][0] >= 0):
+                                    d = float(value - pValue[j][1]) / factor
+                                    tempD.append(d)
+                                j += 1
+
+                            if (pValue[0][0] >= 0):
+                                for z in range(1, factor):
+                                    yield changedSleepTime
+                                    for k in range(0, len(ccList)):
+                                        newValue = pValue[k][1] + tempD[k]
+                                        pValue[k][1] = newValue
+                                        temp = messageObject.copy(control=int(pValue[k][0]),
+                                                                  value=int(normalize(min, max, pValue[k][1],
+                                                                                      int(ccList[k][1]) - 1)))
+                                        port.send(temp)
+
+                            pValue = list(tempValue)
+                        else:
+                            yield sleepTime
+
                         sendCC(options,data,min,max)
                     else:
                         if (isInterpolation == True):
@@ -346,7 +398,8 @@ class MainUI(Widget):
         if (type == "cc"):
             cclist = []
             lists=self.inputs.text
-            lists=lists.split["\n"]
+            print lists
+            lists=lists.split("\n")
 
             for i in range(0, len(lists)):
                 options = lists[i].split(" ")
