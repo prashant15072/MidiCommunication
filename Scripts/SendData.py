@@ -50,6 +50,7 @@ previousValue=[]
 pValue=[[-1,-1]]
 isInterpolation=False
 factor=1
+isStop=False
 
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
@@ -106,7 +107,7 @@ def sendNoteOn(options,data,min,max):
 
 @yieldsleep
 def sendMean(options,min,max):
-    global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, pValue,isInterpolation
+    global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, pValue,isInterpolation,isStop
 
     line_count = 0
     data=[]
@@ -128,142 +129,56 @@ def sendMean(options,min,max):
 
         for row in csv_reader:
 
-            if (noOfRows <= 1):
+            if (isStop==False):
 
 
-                if (type == "cc"):
-
-                    ccList=options
-                    data=row
-
-                    if (isInterpolation==True):
-                        tempD=[]
-                        tempValue=list(ccList)
-                        changedSleepTime = float(sleepTime) / factor
-                        messageObject = mido.Message('control_change')
-
-                        j=0
-
-                        for op in ccList:
-                            control = op[0]
-                            value = int(64 if op[1] == "F" else data[int(op[1]) - 1])
-                            tempValue[j]=[control,value]
-                            if (pValue[0][0]>=0):
-                                d = float(value-pValue[j][1]) / factor
-                                tempD.append(d)
-                            j+=1
-
-
-                        if (pValue[0][0]>=0):
-                            for z in range(1,factor):
-                                yield changedSleepTime
-                                for k in range(0,len(ccList)):
-                                    newValue=pValue[k][1]+tempD[k]
-                                    pValue[k][1]=newValue
-                                    temp = messageObject.copy(control=int(pValue[k][0]),
-                                                              value=int(normalize(min, max, pValue[k][1], int(ccList[k][1]) - 1)))
-                                    port.send(temp)
-
-                        pValue=list(tempValue)
-                    else:
-                        yield sleepTime
-
-
-                    sendCC(options, row, min, max)
-
-
-                else:
-                    if (isInterpolation == True):
-                        data=row
-                        changedSleepTime = float(sleepTime) / factor
-                        messageObject = mido.Message('note_on')
-                        note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
-                        velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
-                        note = int(normalize(min, max, note, int(options[0]) - 1))
-                        velocity = int(normalize(min, max, velocity, int(options[1]) - 1))
-
-                        # Liner Interpolation
-                        anote = previousValue[0]
-                        avelocity = previousValue[1]
-
-                        if (previousValue[0] >= 0):
-                            dnote = (float(note-previousValue[0])) / factor
-                            dvelocity = (float(velocity-previousValue[1])) / factor
-                            for j in range(0, factor):
-                                anote = anote + dnote
-                                avelocity = avelocity + dvelocity
-                                temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
-                                # Make it sleep here
-                                # Clock.schedule_once(my_callback, changedSleepTime)
-                                yield changedSleepTime
-                                port.send(temp)
-
-                        previousValue[0] = note
-                        previousValue[1] = velocity
-
-                    else:
-                        yield sleepTime
-
-                    sendNoteOn(options, row, min, max)
-
-
-                continue
-
-            line_count += 1
-            #Make sure that the modulo is greater that 1
-            if line_count > 0:
-
-                if (line_count%noOfRows==0):
-
-                    for i in range(0,len(row)):
-                        data[i]=int(data[i])+int(row[i])
-
-                    #averaging
-                    for i in range(0,len(data)):
-                        data[i]=float(data[i])/noOfRows
+                if (noOfRows <= 1):
 
 
                     if (type == "cc"):
 
-                        ccList = options
-                        data = row
+                        ccList=options
+                        data=row
 
-                        if (isInterpolation == True):
-                            tempD = []
-                            tempValue = list(ccList)
+                        if (isInterpolation==True):
+                            tempD=[]
+                            tempValue=list(ccList)
                             changedSleepTime = float(sleepTime) / factor
                             messageObject = mido.Message('control_change')
 
-                            j = 0
+                            j=0
 
                             for op in ccList:
                                 control = op[0]
                                 value = int(64 if op[1] == "F" else data[int(op[1]) - 1])
-                                tempValue[j] = [control, value]
-                                if (pValue[0][0] >= 0):
-                                    d = float(value - pValue[j][1]) / factor
+                                tempValue[j]=[control,value]
+                                if (pValue[0][0]>=0):
+                                    d = float(value-pValue[j][1]) / factor
                                     tempD.append(d)
-                                j += 1
+                                j+=1
 
-                            if (pValue[0][0] >= 0):
-                                for z in range(1, factor):
+
+                            if (pValue[0][0]>=0):
+                                for z in range(1,factor):
                                     yield changedSleepTime
-                                    for k in range(0, len(ccList)):
-                                        newValue = pValue[k][1] + tempD[k]
-                                        pValue[k][1] = newValue
+                                    for k in range(0,len(ccList)):
+                                        newValue=pValue[k][1]+tempD[k]
+                                        pValue[k][1]=newValue
                                         temp = messageObject.copy(control=int(pValue[k][0]),
-                                                                  value=int(normalize(min, max, pValue[k][1],
-                                                                                      int(ccList[k][1]) - 1)))
+                                                                  value=int(normalize(min, max, pValue[k][1], int(ccList[k][1]) - 1)))
                                         port.send(temp)
 
-                            pValue = list(tempValue)
+                            pValue=list(tempValue)
                         else:
                             yield sleepTime
 
-                        sendCC(options,data,min,max)
+
+                        sendCC(options, row, min, max)
+
+
                     else:
                         if (isInterpolation == True):
-                            data = row
+                            data=row
                             changedSleepTime = float(sleepTime) / factor
                             messageObject = mido.Message('note_on')
                             note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
@@ -276,8 +191,8 @@ def sendMean(options,min,max):
                             avelocity = previousValue[1]
 
                             if (previousValue[0] >= 0):
-                                dnote = (float(note - previousValue[0])) / factor
-                                dvelocity = (float(velocity - previousValue[1])) / factor
+                                dnote = (float(note-previousValue[0])) / factor
+                                dvelocity = (float(velocity-previousValue[1])) / factor
                                 for j in range(0, factor):
                                     anote = anote + dnote
                                     avelocity = avelocity + dvelocity
@@ -293,18 +208,117 @@ def sendMean(options,min,max):
                         else:
                             yield sleepTime
 
-                        sendNoteOn(options,data,min,max)
+                        sendNoteOn(options, row, min, max)
 
 
-                elif (line_count%noOfRows==1):
-                    data=row
+                    continue
 
-                else:
-                    for i in range(0,len(row)):
-                        data[i]=int(data[i])+int(row[i])
+                line_count += 1
+                #Make sure that the modulo is greater that 1
+                if line_count > 0:
+
+                    if (line_count%noOfRows==0):
+
+                        for i in range(0,len(row)):
+                            data[i]=int(data[i])+int(row[i])
+
+                        #averaging
+                        for i in range(0,len(data)):
+                            data[i]=float(data[i])/noOfRows
 
 
+                        if (type == "cc"):
 
+                            ccList = options
+                            data = row
+
+                            if (isInterpolation == True):
+                                tempD = []
+                                tempValue = list(ccList)
+                                changedSleepTime = float(sleepTime) / factor
+                                messageObject = mido.Message('control_change')
+
+                                j = 0
+
+                                for op in ccList:
+                                    control = op[0]
+                                    value = int(64 if op[1] == "F" else data[int(op[1]) - 1])
+                                    tempValue[j] = [control, value]
+                                    if (pValue[0][0] >= 0):
+                                        d = float(value - pValue[j][1]) / factor
+                                        tempD.append(d)
+                                    j += 1
+
+                                if (pValue[0][0] >= 0):
+                                    for z in range(1, factor):
+                                        yield changedSleepTime
+                                        for k in range(0, len(ccList)):
+                                            newValue = pValue[k][1] + tempD[k]
+                                            pValue[k][1] = newValue
+                                            temp = messageObject.copy(control=int(pValue[k][0]),
+                                                                      value=int(normalize(min, max, pValue[k][1],
+                                                                                          int(ccList[k][1]) - 1)))
+                                            port.send(temp)
+
+                                pValue = list(tempValue)
+                            else:
+                                yield sleepTime
+
+                            sendCC(options,data,min,max)
+                        else:
+                            if (isInterpolation == True):
+                                data = row
+                                changedSleepTime = float(sleepTime) / factor
+                                messageObject = mido.Message('note_on')
+                                note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
+                                velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
+                                note = int(normalize(min, max, note, int(options[0]) - 1))
+                                velocity = int(normalize(min, max, velocity, int(options[1]) - 1))
+
+                                # Liner Interpolation
+                                anote = previousValue[0]
+                                avelocity = previousValue[1]
+
+                                if (previousValue[0] >= 0):
+                                    dnote = (float(note - previousValue[0])) / factor
+                                    dvelocity = (float(velocity - previousValue[1])) / factor
+                                    for j in range(0, factor):
+                                        anote = anote + dnote
+                                        avelocity = avelocity + dvelocity
+                                        temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
+                                        # Make it sleep here
+                                        # Clock.schedule_once(my_callback, changedSleepTime)
+                                        yield changedSleepTime
+                                        port.send(temp)
+
+                                previousValue[0] = note
+                                previousValue[1] = velocity
+
+                            else:
+                                yield sleepTime
+
+                            sendNoteOn(options,data,min,max)
+
+
+                    elif (line_count%noOfRows==1):
+                        data=row
+
+                    else:
+                        for i in range(0,len(row)):
+                            data[i]=int(data[i])+int(row[i])
+
+            else:
+                break
+
+def findPortName(string):
+    midiports = mido.get_output_names()
+    allPorts=[]
+
+    for i in midiports:
+        if (i.find("loop") != -1):
+            allPorts.append(i)
+
+    return min(allPorts,key=len)
 
 
 # UI
@@ -393,10 +407,10 @@ class MainUI(Widget):
 
     def start(self):
 
-        global coloumnNames,coloumnNamesString,data,port,options,sleepTime,type,noOfRows,previousValue,isInterpolation
+        global coloumnNames,coloumnNamesString,data,port,options,sleepTime,type,noOfRows,previousValue,isInterpolation,isStop
 
-        config["outPort"]=self.portname.text+" 1"
-
+        config["outPort"]=findPortName(self.portname.text)
+        isStop=False
         try:
             port=mido.open_output(config["outPort"])
         except IOError:
@@ -442,6 +456,10 @@ class MainUI(Widget):
         sendMean(options, preProcessedData["min"], preProcessedData["max"])
 
         print ("CSV File Parsed Successfully")
+
+    def stop(self):
+        global isStop
+        isStop=True
 
 
 class kivyApp(App):
