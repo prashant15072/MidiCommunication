@@ -16,6 +16,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics.texture import Texture
+
 from kivy.properties import StringProperty,ObjectProperty
 import mido
 import math
@@ -29,6 +30,8 @@ from functools import partial
 
 
 Config.set('kivy', 'keyboard_mode', 'systemandmulti')
+schedule_once = Clock.schedule_once
+__all__ = ('yieldsleep', )
 
 #configuration Setup
 cfgFile="config.cfg"
@@ -50,35 +53,39 @@ factor=1
 def normalize(min,max,val,rowNo):
     if (min[rowNo]>=0 and max[rowNo]<=127):
         return val
-
     ans= (float(val)-min[rowNo])/(max[rowNo]-min[rowNo])
 
     return math.ceil(ans*127)
 
-def yield_to_sleep(func):
-    @wraps(func)  # takes a function used in a decorator and adds the functionality of copying over the function name, arguments list, etc.
-    def wrapper(options,data,max,min,*args, **kwargs):
-        gen = func(options,data,max,min)
+def yieldsleep(create_gen):
+    @wraps(create_gen)
+    def func(*args, **kwargs):
+        gen = create_gen(*args, **kwargs)
 
-        def next_step(*_):  # defining a custom iterator function
+        def sleep(seconds):
+            schedule_once(resume_gen, seconds)
+
+        def resume_gen(dt):
             try:
-                t = next(gen)  # this executes the part of 'func' (in this case, read_image) before the yield statement and returns control to you
-            # i.e in this case it returns run_dict["v"] and stores it in t
+                sleep(gen.send(dt))
             except StopIteration:
                 pass
-            else:
-                # start = time.time()
-                Clock.schedule_once(next_step, t)  # having control you can resume func execution after some time
-            # print("Process time: " + str(time.time() - start))
-            # this executes the part of func after the yield
 
-        next_step()
+        try:
+            sleep(next(gen))
+        except StopIteration:
+            pass
+        return gen
+    return func
 
-    return wrapper
 
+def Interpolation(note,velocity,messageObject):
+    if (previousValue[0] >= 0):
+        temp = messageObject.copy(note=int(note), velocity=int(velocity))
+        port.send(temp)
 
 # generator function
-@yield_to_sleep  # use this decorator to cast 'yield' to non-blocking sleep
+# use this decorator to cast 'yield' to non-blocking sleep
 def sendCC(ccList,data,min,max):
 
     i=0
@@ -107,9 +114,6 @@ def sendCC(ccList,data,min,max):
         i+=1
 
 
-
-# generator function
-@yield_to_sleep  # use this decorator to cast 'yield' to non-blocking sleep
 def sendNoteOn(options,data,min,max):
 
     messageObject = mido.Message('note_on')
@@ -117,51 +121,13 @@ def sendNoteOn(options,data,min,max):
     velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
     note=int(normalize(min,max,note,int(options[0]) - 1))
     velocity=int(normalize(min,max,velocity,int(options[1]) - 1))
-    print sleepTime
-    print factor
-    changedSleepTime = float(sleepTime) / factor
-
-    if (isInterpolation == True):
-
-        # Liner Interpolation
-        anote = note
-        avelocity=velocity
-
-        if (previousValue[0] >= 0):
-            dnote = (float(previousValue[0] - note)) / factor
-            dvelocity=(float(previousValue[1]-velocity))/factor
-            for j in range(0, factor):
-                anote = anote + dnote
-                avelocity = avelocity + dvelocity
-                temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
-                # Make it sleep here
-                # Clock.schedule_once(my_callback, changedSleepTime)
-                yield changedSleepTime
-
-                port.send(temp)
-
-    # Make it sleep here
-    # Clock.schedule_once(my_callback, changedSleepTime)
-    yield changedSleepTime
 
     messageObject = messageObject.copy(note=note, velocity=velocity)
     port.send(messageObject)
 
 
-    previousValue[0] = note
-    previousValue[1] = velocity
 
-
-def sendNormally(row,options,min,max):
-
-    if (type == "cc"):
-        sendCC(options,row,min,max)
-    else:
-        sendNoteOn(options,row,min,max)
-
-
-
-
+@yieldsleep
 def sendMean(options,min,max):
     global coloumnNames, coloumnNamesString, port, sleepTime, type, noOfRows, previousValue, isInterpolation
 
@@ -186,7 +152,45 @@ def sendMean(options,min,max):
         for row in csv_reader:
 
             if (noOfRows <= 1):
-                sendNormally(row, options, min, max)
+
+
+                if (type == "cc"):
+                    sendCC(options, row, min, max)
+                else:
+                    if (isInterpolation == True):
+                        data=row
+                        changedSleepTime = float(sleepTime) / factor
+                        messageObject = mido.Message('note_on')
+                        note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
+                        velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
+                        note = int(normalize(min, max, note, int(options[0]) - 1))
+                        velocity = int(normalize(min, max, velocity, int(options[1]) - 1))
+
+                        # Liner Interpolation
+                        anote = previousValue[0]
+                        avelocity = previousValue[1]
+
+                        if (previousValue[0] >= 0):
+                            dnote = (float(note-previousValue[0])) / factor
+                            dvelocity = (float(velocity-previousValue[1])) / factor
+                            for j in range(0, factor):
+                                anote = anote + dnote
+                                avelocity = avelocity + dvelocity
+                                temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
+                                # Make it sleep here
+                                # Clock.schedule_once(my_callback, changedSleepTime)
+                                yield changedSleepTime
+                                port.send(temp)
+
+                        previousValue[0] = note
+                        previousValue[1] = velocity
+
+                    else:
+                        yield sleepTime
+
+                    sendNoteOn(options, row, min, max)
+
+
                 continue
 
             line_count += 1
@@ -202,10 +206,43 @@ def sendMean(options,min,max):
                     for i in range(0,len(data)):
                         data[i]=float(data[i])/noOfRows
 
+
                     if (type == "cc"):
                         sendCC(options,data,min,max)
                     else:
+                        if (isInterpolation == True):
+                            data = row
+                            changedSleepTime = float(sleepTime) / factor
+                            messageObject = mido.Message('note_on')
+                            note = int(0 if options[0] == "F" else data[int(options[0]) - 1])
+                            velocity = int(64 if options[1] == "F" else data[int(options[1]) - 1])
+                            note = int(normalize(min, max, note, int(options[0]) - 1))
+                            velocity = int(normalize(min, max, velocity, int(options[1]) - 1))
+
+                            # Liner Interpolation
+                            anote = previousValue[0]
+                            avelocity = previousValue[1]
+
+                            if (previousValue[0] >= 0):
+                                dnote = (float(note - previousValue[0])) / factor
+                                dvelocity = (float(velocity - previousValue[1])) / factor
+                                for j in range(0, factor):
+                                    anote = anote + dnote
+                                    avelocity = avelocity + dvelocity
+                                    temp = messageObject.copy(note=int(anote), velocity=int(avelocity))
+                                    # Make it sleep here
+                                    # Clock.schedule_once(my_callback, changedSleepTime)
+                                    yield changedSleepTime
+                                    port.send(temp)
+
+                            previousValue[0] = note
+                            previousValue[1] = velocity
+
+                        else:
+                            yield sleepTime
+
                         sendNoteOn(options,data,min,max)
+
 
                 elif (line_count%noOfRows==1):
                     data=row
