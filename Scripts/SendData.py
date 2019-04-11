@@ -16,7 +16,7 @@ from kivy.uix.button import Button
 from kivy.graphics import Color, Rectangle
 from kivy.uix.boxlayout import BoxLayout
 from kivy.graphics.texture import Texture
-
+from PreProcessing import preProcess
 from kivy.properties import StringProperty,ObjectProperty
 import mido
 import math
@@ -326,6 +326,10 @@ class MainUI(Widget):
     def __init__(self):
         super(MainUI, self).__init__()
 
+    def preprocessData(self):
+        config["csvFileName"] = self.csv_filepath.text
+        preProcess(config["csvFileName"],config)
+
     def printAllColumns(self):
         config["csvFileName"]=self.csv_filepath.text
 
@@ -393,7 +397,14 @@ class MainUI(Widget):
 
         config["outPort"]=self.portname.text+" 1"
 
-        port=mido.open_output(config["outPort"])
+        try:
+            port=mido.open_output(config["outPort"])
+        except IOError:
+            #TODO Add error pop up for no port found
+            print "Caught"
+        except :
+            pass
+
 
         if (type == "cc"):
             cclist = []
