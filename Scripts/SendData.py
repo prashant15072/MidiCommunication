@@ -315,7 +315,7 @@ def findPortName(string):
     allPorts=[]
 
     for i in midiports:
-        if (i.find("loop") != -1):
+        if (i.find(string) != -1):
             allPorts.append(i)
 
     return min(allPorts,key=len)
@@ -348,6 +348,7 @@ class MainUI(Widget):
         config["csvFileName"]=self.csv_filepath.text
 
         global coloumnNamesString
+        coloumnNamesString=""
 
         try:
             # Reading CSV
@@ -428,9 +429,12 @@ class MainUI(Widget):
 
             for i in range(0, len(lists)):
                 options = lists[i].split(" ")
-                options[0] = int(options[0].strip())
-                options[1] = int(options[1].strip())
-                cclist.append(options)
+                print options
+
+                if (len(options)>1):
+                    options[0] = int(options[0].strip())
+                    options[1] = int(options[1].strip())
+                    cclist.append(options)
 
             options = cclist
 
@@ -456,6 +460,8 @@ class MainUI(Widget):
         sendMean(options, preProcessedData["min"], preProcessedData["max"])
 
         print ("CSV File Parsed Successfully")
+
+
 
     def stop(self):
         global isStop
